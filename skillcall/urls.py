@@ -5,4 +5,8 @@ import views
 urlpatterns = (
 	url(r'^login$',obtain_jwt_token),
 	url(r'^getUsers$',views.getUsers),
+	url(r'^signup$',views.signup),
+	url(r'^register$',views.register),
+	url(r'^forgotPassword$',views.forgotPassword),
+	url(r'^changePassword$',views.changePassword),
 )

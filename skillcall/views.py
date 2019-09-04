@@ -34,17 +34,92 @@ from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view,authentication_classes,permission_classes
 from sqlalchemy.engine.url import URL
 from django.conf import settings
+from django.contrib.auth.hashers import make_password, check_password
+from django.utils.crypto import get_random_string
 
 # Create your views here.
-
+from certificationAPI.emailDispatcher import *
 from certificationAPI.connection import *
-def postgresconnection(db):
+def postgresconnection():
 	engine = getPoolEngine()
 	Session = sqlalchemy.orm.sessionmaker(bind=engine)
 	session = Session()
 	return session
 
 @api_view(['GET', 'POST'])
-#@permission_classes((AllowAny,))
 def getUsers(request):
-	return Response({"data":"hello"})
+	session = postgresconnection()
+	allUsers = session.query(AuthUser.username).filter(AuthUser.is_active==True).all()
+	session.close()
+	listOfUsers = ViewUsersSerializer(allUsers,many=True).data
+	return Response(listOfUsers)
+
+@api_view(['GET', 'POST'])
+@permission_classes((AllowAny,))
+def signup(request):
+	username = request.POST.get('username')
+	password = request.POST.get('password')
+	session = postgresconnection()
+	if(session.query(exists().where(AuthUser.username == username).where(AuthUser.is_active == True)).scalar()):
+		response = {'status':'ERROR','message':'User Already Registered'}
+	else:
+		userPass = make_password(password)
+		tokenInLink = get_random_string(length=64,allowed_chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+		userRecord = AuthUser(username = username, password = userPass, email = username, is_active = False, is_staff = False, first_name = '', last_name = '', is_superuser = False, date_joined = datetime.now(), user_pass_reset_token = tokenInLink)
+		session.add(userRecord)
+		session.commit()
+		sendSignupMail(username, tokenInLink)
+		response = {'status':'SUCCESS','message':'User Successfully Registered'}
+	session.close()
+	return Response(response)
+
+@api_view(['GET', 'POST'])
+@permission_classes((AllowAny,))
+def register(request):
+	username = request.POST.get('username')
+	tokenInLink = request.POST.get('token')
+	session = postgresconnection()
+	if(session.query(exists().where(AuthUser.username == username).where(AuthUser.is_active == False).where(AuthUser.user_pass_reset_token == tokenInLink)).scalar()):
+		updated_values = {AuthUser.user_pass_reset_token : '', AuthUser.last_update_date : datetime.now(),AuthUser.is_active: True}
+		session.query(AuthUser).filter(AuthUser.username == username).update(updated_values)
+		session.commit()
+		response = {'status':"SUCCESS"}
+	else:
+		response = {'status':"FAILED", 'message':'User Already Verified'}
+	session.close()
+	return Response(response)
+
+@api_view(['GET', 'POST'])
+@permission_classes((AllowAny,))
+def forgotPassword(request):
+	username = request.POST.get('username')
+	session = postgresconnection()
+	if(session.query(exists().where(AuthUser.username == username).where(AuthUser.is_active == True)).scalar()):
+		tokenInLink = get_random_string(length=64,allowed_chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+		updated_values = {AuthUser.user_pass_reset_token : tokenInLink, AuthUser.last_update_date : datetime.now()}
+		session.query(AuthUser).filter(AuthUser.username == username).update(updated_values)
+		session.commit()
+		sendForgotPassMail(username, tokenInLink)
+		response = {'status':"SUCCESS"}
+	else:
+		response = {'status':"FAILED", 'message':'Contact Administrator to change Password'}
+	session.close()
+	return Response(response)
+
+@api_view(['GET', 'POST'])
+@permission_classes((AllowAny,))
+def changePassword(request):
+	username = request.POST.get('username')
+	token = request.POST.get('token')
+	password = request.POST.get('password')
+	session = postgresconnection()
+	if(session.query(exists().where(AuthUser.username == username).where(AuthUser.is_active == True).where(AuthUser.user_pass_reset_token == token)).scalar()):
+		userPass = make_password(password)
+		updated_values = {AuthUser.user_pass_reset_token : '', AuthUser.password: userPass, AuthUser.last_update_date : datetime.now()}
+		session.query(AuthUser).filter(AuthUser.username == username).update(updated_values)
+		session.commit()
+		response = {'status':"SUCCESS"}
+	else:
+		response = {'status':"FAILED", 'message':'Contact Administrator to change Password'}
+	session.close()
+	return Response(response)

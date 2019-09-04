@@ -27,3 +27,5 @@ class AuthUser(Base):
 	is_staff = Column(Boolean, nullable=False)
 	is_active = Column(Boolean, nullable=False)
 	date_joined = Column(DateTime(True), nullable=False)
+	user_pass_reset_token = Column(String)
+	last_update_date = Column(DateTime(True))

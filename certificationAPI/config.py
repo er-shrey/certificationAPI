@@ -11,3 +11,11 @@ CERTIFICATE_POSTGRE_DATABASE = {
 }
 
 DEBUG = True
+
+EMAIL = {
+	'host': 'smtp.gmail.com',
+	'port': 587,
+	'useTLS': True,
+	'hostUser': '',
+	'hostPassword' : ''
+}
