@@ -47,14 +47,6 @@ def postgresconnection():
 	return session
 
 @api_view(['GET', 'POST'])
-def getUsers(request):
-	session = postgresconnection()
-	allUsers = session.query(AuthUser.username).filter(AuthUser.is_active==True).all()
-	session.close()
-	listOfUsers = ViewUsersSerializer(allUsers,many=True).data
-	return Response(listOfUsers)
-
-@api_view(['GET', 'POST'])
 @permission_classes((AllowAny,))
 def signup(request):
 	username = request.POST.get('username')

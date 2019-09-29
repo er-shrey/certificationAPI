@@ -1,4 +1,4 @@
-from skillcall.models import *
+from openAPIs.models import *
 import serpy
 
 class ViewUsersSerializer(serpy.Serializer):
