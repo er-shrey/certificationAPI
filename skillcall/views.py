@@ -84,15 +84,15 @@ def register(request):
 @api_view(['GET', 'POST'])
 @permission_classes((AllowAny,))
 def forgotPassword(request):
-	username = request.POST.get('username')
+	email = request.GET.get('email')
 	session = postgresconnection()
-	if(session.query(exists().where(AuthUser.username == username).where(AuthUser.is_active == True)).scalar()):
+	if(session.query(exists().where(AuthUser.email == email).where(AuthUser.is_active == True)).scalar()):
 		tokenInLink = get_random_string(length=64,allowed_chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
 		updated_values = {AuthUser.user_pass_reset_token : tokenInLink, AuthUser.last_update_date : datetime.now()}
-		session.query(AuthUser).filter(AuthUser.username == username).update(updated_values)
+		session.query(AuthUser).filter(AuthUser.email == email).update(updated_values)
 		session.commit()
-		sendForgotPassMail(username, tokenInLink)
-		response = {'status':"SUCCESS"}
+		sendForgotPassMail(email, tokenInLink)
+		response = {'status':"SUCCESS", 'message':'Password Recovery Link has been sent to your mail.'}
 	else:
 		response = {'status':"FAILED", 'message':'Contact Administrator to change Password'}
 	session.close()
@@ -101,16 +101,21 @@ def forgotPassword(request):
 @api_view(['GET', 'POST'])
 @permission_classes((AllowAny,))
 def changePassword(request):
-	username = request.POST.get('username')
-	token = request.POST.get('token')
-	password = request.POST.get('password')
+	username = request.GET.get('username')
+	token = request.GET.get('token')
+	password = request.GET.get('password')
+	print "============================="
+	print username
+	print token
+	print password
+	print "============================="
 	session = postgresconnection()
 	if(session.query(exists().where(AuthUser.username == username).where(AuthUser.is_active == True).where(AuthUser.user_pass_reset_token == token)).scalar()):
 		userPass = make_password(password)
 		updated_values = {AuthUser.user_pass_reset_token : '', AuthUser.password: userPass, AuthUser.last_update_date : datetime.now()}
 		session.query(AuthUser).filter(AuthUser.username == username).update(updated_values)
 		session.commit()
-		response = {'status':"SUCCESS"}
+		response = {'status':"SUCCESS", 'message':'success'}
 	else:
 		response = {'status':"FAILED", 'message':'Contact Administrator to change Password'}
 	session.close()
